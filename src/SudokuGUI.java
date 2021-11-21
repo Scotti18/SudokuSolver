@@ -130,13 +130,22 @@ public class SudokuGUI extends JFrame{
 		resetButton = new JButton("Reset");
 		
 		// Quick Solve button
-		for (JButton button : operationButtons) {
-			button.addActionListener(new ActionListener() {
+		int[] help2 = new int[operationButtons.length];
+		for (int i=0; i<operationButtons.length; i++) {
+			help2[i] = i;
+		}
+		for (int i : help2) {
+			operationButtons[i].addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				newSudoku.resetSudoku();
-				newSudoku.solveSudoku();
+				boolean slow = (i == 0) ? false : true;
+				newSudoku.solveSudoku(0,0,0, sudokuLabels, slow);
 				
+				for (JFormattedTextField j : sudokuLabels) {
+					j.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+				}
+				/*
 				oneField[][] solvedSudoku = newSudoku.getSolvedSudoku();
 				int count = 0;
 				for (int i=0; i<solvedSudoku.length; i++) {
@@ -144,6 +153,7 @@ public class SudokuGUI extends JFrame{
 						sudokuLabels[count++].setText("" + solvedSudoku[i][j].getDigit());
 					}
 				}
+				*/
 				
 				for (JButton b : difficultyButtons) {
 					b.setEnabled(false);
@@ -382,7 +392,7 @@ public class SudokuGUI extends JFrame{
 					        	// Change value of solvedSudoku array
 					        	int position_i = count_final / sudokuF.length;
 					        	int position_j = count_final % sudokuF[1].length;
-					        	newSudoku.changeSolvedValue(position_i, position_j, parsed);
+					        	newSudoku.setValueSudoku(position_i, position_j, parsed);
 					        	System.out.println(newSudoku);
 					        } 					        
 					    }
@@ -407,6 +417,7 @@ public class SudokuGUI extends JFrame{
 	private SudokuGUI getThis() {
 		return this;
 	}
+
 	
 	public static void main(String[] args) {
 		SudokuGUI test = new SudokuGUI();

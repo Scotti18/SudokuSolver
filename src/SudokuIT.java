@@ -1,12 +1,5 @@
-import java.awt.Color;
-
-import javax.swing.BorderFactory;
-import javax.swing.JFormattedTextField;
-import javax.swing.JLabel;
-
-public class Sudoku {
-	// Test Sudokus
-	// Sudoku with one solution
+public class SudokuIT {
+	// Test Sudoku
 	private static final int[][] sudoku1 = { 
 			{3, 0, 6, 5, 0, 8, 4, 0, 0}, 
 	        {5, 2, 0, 0, 0, 0, 0, 0, 0}, 
@@ -17,18 +10,6 @@ public class Sudoku {
 	        {1, 3, 0, 0, 0, 0, 2, 5, 0}, 
 	        {0, 0, 0, 0, 0, 0, 0, 7, 4}, 
 	        {0, 0, 5, 2, 0, 6, 3, 0, 0} };
-	// Sudoku with two solutions
-	private static final int[][] sudoku2 = {
-			{2, 9, 5, 7, 4, 3, 8, 6, 1},
-			{4, 3, 1, 8, 6, 5, 9, 0, 0},
-			{8, 7, 6, 1, 9, 2, 5, 4, 3},
-			{3, 8, 7, 4, 5, 9, 2, 1, 6},
-			{6, 1, 2, 3, 8, 7, 4, 9, 5},
-			{5, 4, 9, 2, 1, 6, 7, 3, 8},
-			{7, 6, 3, 5, 3, 4, 1, 8, 9},
-			{9, 2, 8, 6, 7, 1, 3, 5, 4},
-			{1, 5, 4, 9, 3, 8, 6, 0, 0} };
-	
 	
 	private final int SIZE = 9; // Sudoku 9 x 9 Matrix
 	private final int SIZE_BOX = 3; // 3 x 3 sub Boxes
@@ -37,10 +18,10 @@ public class Sudoku {
 	private oneField[][] solvedSudoku = new oneField[SIZE][SIZE];  // The solved sudoku
 	
 	private long startNano, startMilli, endNano, endMilli; // Duration of Algorithm 
-	private int numberOfSolutions;
+	
 	
 	// Constructors 
-	public Sudoku() {
+	public SudokuIT() {
 		for (int i=0; i<SIZE; i++) {
 			for (int j=0; j<SIZE; j++) {
 				this.sudoku[i][j] = new oneField(0);
@@ -48,7 +29,7 @@ public class Sudoku {
 			}
 		}
 	}
-	public Sudoku(int[][] sudokuToSolve) {
+	public SudokuIT(int[][] sudokuToSolve) {
 		for (int i=0; i<SIZE; i++) {
 			for (int j=0; j<SIZE; j++) {
 				if (sudokuToSolve[i][j] == 0) {  // field to be solved / changed
@@ -67,66 +48,52 @@ public class Sudoku {
 	// Sudoku Solving Algorithms 
 	// ******
 	
-	protected void callSolvingAlgorithm() {
+	
+	// Solving algorithm, that implements other helper functions
+	protected void solveSudoku() {
 		this.startNano = System.nanoTime();
 		this.startMilli = System.currentTimeMillis();
-		this.numberOfSolutions = this.solveSudoku(0, 0, 0, null, false);
-		System.out.println("Number of Solutions: " + this.numberOfSolutions);
+		
+		
+		int[] tmpI_J = new int[2];
+		
+		// Now iterate over the sudoku field
+		for (int i=0; i<this.SIZE;) {	
+			for (int j=0; j<this.SIZE;) {
+				
+				label: {
+				// If the field is not pre-filled	
+				if (this.sudoku[i][j].isGiven() == false) {					
+					do {
+						// Increase value of field as long as it doesn't check out
+						if(this.solvedSudoku[i][j].getDigit() < 9) {
+							this.solvedSudoku[i][j].increaseDigit();
+						} else {
+							// If value of field is already a 9, set to 0 and go back to previous changeable field
+							this.solvedSudoku[i][j].setDigit(0);
+							tmpI_J = this.lastZero(i, j);
+							i = tmpI_J[0];
+							j = tmpI_J[1];
+							break label;
+						}
+					} while (!checkIfFree(i, j, this.solvedSudoku[i][j].getDigit(), true) && this.solvedSudoku[i][j].getDigit() <= 9);
+					
+					j++;
+					
+				// If field is pre-filled move on to the next	
+				} else {
+					j++;
+				} 
+				} // Label ending bracket
+								
+			}
+			i++;
+		}
+		
 		this.endNano = System.nanoTime();
 		this.endMilli = System.currentTimeMillis();
 	}
 	
-	// If it has more than one solution it wont solve 
-	protected int solveSudoku(int i, int j, int countSolutions, JFormattedTextField[] labels, boolean slowSolve) {
-		// Recursion anchors
-		// Keep i and j in line
-		if (j == 9) {
-			j = 0;
-			if (++i == 9) {
-				return countSolutions + 1;
-			}
-		}
-		// Skip preset fields
-		if (this.solvedSudoku[i][j].isGiven()) {
-			if (slowSolve) {
-				labels[i*9+j].setBorder(BorderFactory.createLineBorder(Color.RED, 2));
-				labels[i*9+j].paintImmediately(labels[i*9+j].getVisibleRect());
-			}
-			return solveSudoku(i, j+1, countSolutions, labels, slowSolve);
-		}
-
-		// Brute force values from 1 to 9
-		for (int value=1; value<=9 /*&& countSolutions<1*/; value++) {
-			if (this.checkIfFree(i, j, value, true)) {
-				if (labels != null) {
-					changeGUIField(labels[i * 9 + j], value, slowSolve);
-				}
-				this.solvedSudoku[i][j].setDigit(value);
-				countSolutions = solveSudoku(i, j+1, countSolutions, labels, slowSolve);
-				
-				if (!this.checkSudokuCorrectness()) {
-					this.solvedSudoku[i][j].setDigit(0); // Reset if no digit fits
-				}
-			}
-		}
-		return countSolutions; // 
-	}
-	
-	private void changeGUIField(JFormattedTextField textField, int value, boolean slowSolve) {
-		int ms = 8;
-		textField.setText("" + value);
-		if (slowSolve) {
-			textField.setBorder(BorderFactory.createLineBorder(Color.GREEN, 5));
-			textField.paintImmediately(textField.getVisibleRect());
-			try {
-			      Thread.sleep(ms);
-			    } catch (InterruptedException e) {
-			      e.printStackTrace();
-			    }
-			textField.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-			textField.paintImmediately(textField.getVisibleRect());
-		}
-	}
 	
 	// Check whether number is present in row / column / box 
 		private boolean checkIfFree(int rowIndex, int columnIndex, int number, boolean check) {
@@ -153,28 +120,50 @@ public class Sudoku {
 			
 			// If check == true -> check whether number can fit in column / row / box
 			// If check == false -> check the correctness of row / column / box -> (only for) checking the correctness of finished Sudoku
+
 			if (check) {
-				return isNumberNotInArray(number, row) && isNumberNotInArray(number, column) && isNumberNotInArray(number, box);
+				return isNumberInArray(number, row) && isNumberInArray(number, column) && isNumberInArray(number, box);
 			} else {
 				return allDigitsInArray(row) && allDigitsInArray(column) && allDigitsInArray(box);
 			}
 
 		}
+		
+		// Return column (j) and line (i) of previous zero (look for it in unchanged sudoku array)
+		private int[] lastZero(int row, int column) {
+			int counter = 0;
+			int[] help = {0, 0};
+			for (int i=row; i>=0; i--) {
+				for (int j=column; j>=0; j--) {
+					if (this.sudoku[i][j].getDigit() == 0 && counter > 0) {
+						int[] help1 = {i, j};
+						return help1;
+					}
+					counter++;
+				}
+				column = this.SIZE - 1;
+			}
 			
+			return help;
+		}
+	
+	
+	
 	// ******
 	// Static Helper Methods 
 	// for Solving the Sudoku
 	// ******
 	
 	// Check if same number is not in array 
-	private static boolean isNumberNotInArray(int zahl, int[] array) {
+	private static boolean isNumberInArray(int zahl, int[] array) {
+		int counter = 0;
 		for (int i : array) {
 			if (zahl == i) {
-				return false;
+				counter++;
 			}
 		}
 		// If number is not in array return true
-		return true;
+		return (counter == 1) ? true : false;
 	}
 
 	// Check if int array of length 9 contains all values from 1 to 9
@@ -192,6 +181,8 @@ public class Sudoku {
 		}
 		return true;
 	}
+
+	
 	
 	// ******
 	// OOP (Getter, Settter, toString, check Correctness)
@@ -221,7 +212,7 @@ public class Sudoku {
 				
 				unsolved += this.sudoku[i][j].getDigit() + " ";
 				solved += this.solvedSudoku[i][j].getDigit() + " ";
-				if ((j + 1) % this.SIZE_BOX == 0) {
+				if ((j + 1) % 3 == 0) {
 					unsolved += " ";
 					solved += " ";
 				}
@@ -230,7 +221,7 @@ public class Sudoku {
 			unsolved += '\n';
 			solved += '\n';
 			
-			if ((i+1) % this.SIZE_BOX == 0) {
+			if ((i+1) % 3 == 0) {
 				unsolved += '\n';
 				solved += '\n';
 			}
@@ -238,18 +229,17 @@ public class Sudoku {
 		unsolved += "--------------------\n";
 		solved += "Duration Time in Nano: " + (this.endNano - this.startNano) + '\n';
 		solved += "Duration Time in Milli: " + (this.endMilli - this.startMilli) + '\n';
-		solved += "Sudoku correct!\n--------------------\n";
-			
+		solved += "--------------------\n";
+		
 		if (this.checkSudokuCorrectness()) {
-			return "Solved Sudoku: \n"+ solved;
-		} else if (this.numberOfSolutions > 1) {
-			return "Sudoku has no unique solution";
+			return "Unsolved Sudoku: \n" + unsolved + "\nSolved Sudoku: \n"+ solved + "Sudoku correct!";
 		} else {
-			return "\nUnsolved Sudoku: \n(Sudoku still incorecct!)\n" + unsolved;
+			return "Unsolved Sudoku: \n\nSudoku still incorecct!\n" + unsolved + "\n";
 		}
-			
+		
 	}
 	
+
 	protected boolean checkSudokuCorrectness() {
 		for (int i=0; i<this.SIZE; i++) {
 			for (int j=0; j<this.SIZE; j++) {
@@ -266,6 +256,10 @@ public class Sudoku {
 	// ONLY FOR GUI
 	// ******
 	
+	// Change value of solvedSudoku array
+	protected void changeSolvedValue(int i, int j, int value) {
+		this.solvedSudoku[i][j].setDigit(value);
+	}
 	
 	// reset the solvedSudkou field 
 	protected void resetSudoku() {
@@ -276,17 +270,13 @@ public class Sudoku {
 		}
 	}
 	
-	// Test Sudokus 
+	
+	
 	public static void main(String[] args) {
-		Sudoku test = new Sudoku(sudoku1);
+		SudokuIT test = new SudokuIT(sudoku1);
 		System.out.println(test);
-		test.callSolvingAlgorithm();
+		test.solveSudoku();
 		System.out.println(test);
-		
-		Sudoku test0 = new Sudoku(sudoku2);
-		System.out.println(test0);
-		test0.callSolvingAlgorithm();
-		System.out.println(test0);
 
 	}
 
