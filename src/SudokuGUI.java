@@ -1,5 +1,6 @@
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -77,14 +78,17 @@ public class SudokuGUI extends JFrame{
 	private JButton[] operationButtons = new JButton[2];
 	private JButton checkButton, resetButton;
 	private JFormattedTextField[] sudokuLabels = new JFormattedTextField[81];
+	private JLabel answer;
 	private Sudoku newSudoku;
+	private long startNano, startMilli, endNano, endMilli;
+	private double durationSeconds;
 	
 	public SudokuGUI() {
 		// Basic JFrame Settings
 		fenster = new JFrame();
 		fenster.setTitle("Sudoku Solver");
 		fenster.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		fenster.setSize(750, 600);
+		fenster.setSize(800, 680);
 		
 		
 		// Initialize the window
@@ -140,20 +144,23 @@ public class SudokuGUI extends JFrame{
 			public void actionPerformed(ActionEvent arg0) {
 				newSudoku.resetSudoku();
 				boolean slow = (i == 0) ? false : true;
-				newSudoku.solveSudoku(0,0,0, sudokuLabels, slow);
+				
+				SudokuGUI.this.startMilli = System.currentTimeMillis();
+				newSudoku.solveSudoku(0, 0, sudokuLabels, slow);
+				SudokuGUI.this.endMilli = System.currentTimeMillis();
+				SudokuGUI.this.durationSeconds = ((double) endMilli - startMilli) / 1000;
+				
+				if (!slow) {
+					SudokuGUI.this.setSudoku(newSudoku.getSolvedSudoku(), false);
+				}
+				
+				// Speed of algorithm
+				answer.setText((SudokuGUI.this.endMilli - SudokuGUI.this.startMilli) + " MilliSeconds / " + SudokuGUI.this.durationSeconds + " Seconds");
+				answer.paintImmediately(answer.getVisibleRect());
 				
 				for (JFormattedTextField j : sudokuLabels) {
 					j.setBorder(BorderFactory.createLineBorder(Color.BLACK));
 				}
-				/*
-				oneField[][] solvedSudoku = newSudoku.getSolvedSudoku();
-				int count = 0;
-				for (int i=0; i<solvedSudoku.length; i++) {
-					for (int j=0; j<solvedSudoku.length; j++) {
-						sudokuLabels[count++].setText("" + solvedSudoku[i][j].getDigit());
-					}
-				}
-				*/
 				
 				for (JButton b : difficultyButtons) {
 					b.setEnabled(false);
@@ -162,6 +169,11 @@ public class SudokuGUI extends JFrame{
 					b.setEnabled(false);
 				}
 				resetButton.setEnabled(true);
+				
+				Thread newThread = new Thread(() -> {
+					removeText5Seconds(answer);
+				});
+				newThread.start();
 				
 			}
 			});
@@ -209,9 +221,6 @@ public class SudokuGUI extends JFrame{
 		return northPanel;
 	}
 
-
-	
-
 	private JPanel createEastPanel() {
 		// East Panel
 		eastPanel = new JPanel();
@@ -240,9 +249,9 @@ public class SudokuGUI extends JFrame{
 			difficultyButtons[i].addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {
-					newSudoku = getThis().chooseSudoku(sudokus[i]);
+					newSudoku = SudokuGUI.this.chooseSudoku(sudokus[i]);
 					// change Sudoku -> initial = false
-					getThis().setSudoku(newSudoku.getSudoku(), false);
+					SudokuGUI.this.setSudoku(newSudoku.getSudoku(), false);
 				}
 			});
 			
@@ -279,7 +288,7 @@ public class SudokuGUI extends JFrame{
 		checkButton = new JButton("Check");
 		southPanel = new JPanel();
 		southPanel.add(checkButton);
-		JLabel answer = new JLabel();
+		answer = new JLabel();
 		answer.setPreferredSize(new Dimension(230, 30));
 		answer.setHorizontalAlignment(JLabel.CENTER);
 		southPanel.add(answer);
@@ -290,7 +299,7 @@ public class SudokuGUI extends JFrame{
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				System.out.println(newSudoku.checkSudokuCorrectness());
-				getThis().fenster.validate();
+				SudokuGUI.this.fenster.validate();
 				if(newSudoku.checkSudokuCorrectness()) {
 					for (JButton b : difficultyButtons) {
 						b.setEnabled(false);
@@ -313,7 +322,7 @@ public class SudokuGUI extends JFrame{
 
 	private JPanel createCenterPanel() {
 		// set Sudoku field for first time -> initial = true
-		this.setSudoku(newSudoku.getSudoku(), true);
+		this.setSudoku(this.newSudoku.getSudoku(), true);
 		centerPanel = new JPanel();
 		centerPanel.setPreferredSize(new Dimension(800, 500));
 		centerPanel.add(gridHelp);
@@ -334,20 +343,26 @@ public class SudokuGUI extends JFrame{
 		return new Sudoku(toSolve);
 	}
 	
-	// Set Sudoku in GUI -> either initial set up or change sudoku field
 	private void setSudoku(oneField[][] sudokuF, boolean initial) {
 		// Center Panel -> Sudoku Field
-		gridHelp = new JPanel(new GridLayout(9, 9, 10, 10));
+		GridLayout gridContainer = new GridLayout(3, 3, 20, 20);
+		this.gridHelp = new JPanel(gridContainer);
+		GridLayout subGrid = new GridLayout(3, 3, 10, 10);
+		JPanel[] allGrids = new JPanel[9];
+		for (int i=0; i<allGrids.length; i++) {
+			allGrids[i] = new JPanel(subGrid);
+		}
+		
+		
 		int count = 0;
 		for (int i=0; i<sudokuF.length; i++) {
 			for (int j=0; j<sudokuF[1].length; j++) {
 				// If it is set for the first time 
 				if (initial) {
 					sudokuLabels[count] = new JFormattedTextField();
-					sudokuLabels[count].setBackground(new Color(200, 200, 200));
-					sudokuLabels[count].setPreferredSize(new Dimension(40, 40));
+					sudokuLabels[count].setPreferredSize(new Dimension(45, 45));
 					sudokuLabels[count].setOpaque(true);
-					sudokuLabels[count].setBackground(yellow);
+					sudokuLabels[count].setBackground(this.yellow);
 					sudokuLabels[count].setFont(new Font(null,2, 18));
 					sudokuLabels[count].setHorizontalAlignment(JTextField.CENTER);
 					sudokuLabels[count].setBorder(BorderFactory.createLineBorder(Color.BLACK));
@@ -400,24 +415,55 @@ public class SudokuGUI extends JFrame{
 					});
 				}
 				if (initial) {
-					gridHelp.add(sudokuLabels[count++]);
+					if (i < 3 && i >= 0) {
+						if (j < 3 && j >= 0) {
+							allGrids[0].add(sudokuLabels[count++]);
+						} else if (j < 6 && j >= 3) {
+							allGrids[1].add(sudokuLabels[count++]);
+						} else {
+							allGrids[2].add(sudokuLabels[count++]);
+						}
+					} else if (i < 6 && i >= 3) {
+						if (j < 3 && j >= 0) {
+							allGrids[3].add(sudokuLabels[count++]);
+						} else if (j < 6 && j >= 3) {
+							allGrids[4].add(sudokuLabels[count++]);
+						} else {
+							allGrids[5].add(sudokuLabels[count++]);
+						}
+					} else {
+						if (j < 3 && j >= 0) {
+							allGrids[6].add(sudokuLabels[count++]);
+						} else if (j < 6 && j >= 3) {
+							allGrids[7].add(sudokuLabels[count++]);
+						} else {
+							allGrids[8].add(sudokuLabels[count++]);
+						}
+					}
 				} else {
 					count++;
 				}
 			}
 		}
-		
+		for (JPanel panel : allGrids) {
+			panel.setBackground(this.lightblue);
+			this.gridHelp.add(panel);
+		}
 		// Border for testing
 		gridHelp.setBorder(border1);
 		gridHelp.setOpaque(true);
 		gridHelp.setBackground(cyan);
 	}
-
-	// To access this (SudokuGUI) within an Action Listener
-	private SudokuGUI getThis() {
-		return this;
+	
+	private void removeText5Seconds(JLabel toChange) {
+		try {
+		      Thread.sleep(5000);
+		    } catch (InterruptedException e) {
+		      e.printStackTrace();
+		    }
+		toChange.setText("");
+		toChange.paintImmediately(toChange.getVisibleRect());
 	}
-
 	
 	public static void main(String[] args) {
 		SudokuGUI test = new SudokuGUI();

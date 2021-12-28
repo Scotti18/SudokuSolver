@@ -11,6 +11,17 @@ public class SudokuIT {
 	        {0, 0, 0, 0, 0, 0, 0, 7, 4}, 
 	        {0, 0, 5, 2, 0, 6, 3, 0, 0} };
 	
+	private final static int[][] sudoku3 = {
+			{ 8, 0, 0, 0, 0, 0, 0, 0, 0 },
+			  { 0, 0, 3, 6, 0, 0, 0, 0, 0 },
+			  { 0, 7, 0, 0, 9, 0, 2, 0, 0 },
+			  { 0, 5, 0, 0, 0, 7, 0, 0, 0 },
+			  { 0, 0, 0, 0, 4, 5, 7, 0, 0 },
+			  { 0, 0, 0, 1, 0, 0, 0, 3, 0 },
+			  { 0, 0, 1, 0, 0, 0, 0, 6, 8 },
+			  { 0, 0, 8, 5, 0, 0, 0, 1, 0 },
+			  { 0, 9, 0, 0, 0, 0, 4, 0, 0 } };
+	
 	private final int SIZE = 9; // Sudoku 9 x 9 Matrix
 	private final int SIZE_BOX = 3; // 3 x 3 sub Boxes
 	
@@ -77,15 +88,9 @@ public class SudokuIT {
 							break label;
 						}
 					} while (!checkIfFree(i, j, this.solvedSudoku[i][j].getDigit(), true) && this.solvedSudoku[i][j].getDigit() <= 9);
-					
-					j++;
-					
-				// If field is pre-filled move on to the next	
-				} else {
-					j++;
 				} 
-				} // Label ending bracket
-								
+				j++;
+				} // Label ending bracket					
 			}
 			i++;
 		}
@@ -273,7 +278,7 @@ public class SudokuIT {
 	
 	
 	public static void main(String[] args) {
-		SudokuIT test = new SudokuIT(sudoku1);
+		SudokuIT test = new SudokuIT(sudoku3);
 		System.out.println(test);
 		test.solveSudoku();
 		System.out.println(test);

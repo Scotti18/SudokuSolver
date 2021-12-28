@@ -35,6 +35,7 @@ public class Sudoku {
 	
 	private oneField[][] sudoku = new oneField[SIZE][SIZE];  // Given sudoku to solve -> does not change
 	private oneField[][] solvedSudoku = new oneField[SIZE][SIZE];  // The solved sudoku
+	private oneField[][] createSudoku = new oneField[SIZE][SIZE];
 	
 	private long startNano, startMilli, endNano, endMilli; // Duration of Algorithm 
 	private int numberOfSolutions;
@@ -45,6 +46,7 @@ public class Sudoku {
 			for (int j=0; j<SIZE; j++) {
 				this.sudoku[i][j] = new oneField(0);
 				this.solvedSudoku[i][j] = new oneField(0);
+				this.createSudoku[i][j] = new oneField(0);
 			}
 		}
 	}
@@ -54,9 +56,11 @@ public class Sudoku {
 				if (sudokuToSolve[i][j] == 0) {  // field to be solved / changed
 					this.sudoku[i][j] = new oneField(0, false);
 					this.solvedSudoku[i][j] = new oneField(0, false);
+					this.createSudoku[i][j] = new oneField(0);
 				} else {  // preset field (unchangable)
 					this.sudoku[i][j] = new oneField(sudokuToSolve[i][j], true);
 					this.solvedSudoku[i][j] = new oneField(sudokuToSolve[i][j], true);
+					this.createSudoku[i][j] = new oneField(0);
 				}
 			}
 		}
@@ -70,14 +74,94 @@ public class Sudoku {
 	protected void callSolvingAlgorithm() {
 		this.startNano = System.nanoTime();
 		this.startMilli = System.currentTimeMillis();
-		this.numberOfSolutions = this.solveSudoku(0, 0, 0, null, false);
-		System.out.println("Number of Solutions: " + this.numberOfSolutions);
+		System.out.println(this.solveSudoku(0, 0, null, false));
 		this.endNano = System.nanoTime();
 		this.endMilli = System.currentTimeMillis();
 	}
 	
 	// If it has more than one solution it wont solve 
-	protected int solveSudoku(int i, int j, int countSolutions, JFormattedTextField[] labels, boolean slowSolve) {
+	protected boolean solveSudoku(int i, int j, JFormattedTextField[] labels, boolean slowSolve) {
+		// Recursion anchors
+		// Keep i and j in line
+		if (j == 9) {
+			j = 0;
+			if (++i == 9) {
+				return true;
+			}
+		}
+		// Skip preset fields
+		if (this.solvedSudoku[i][j].isGiven()) {
+			if (slowSolve) {
+				labels[i*9+j].setBorder(BorderFactory.createLineBorder(Color.RED, 2));
+				labels[i*9+j].paintImmediately(labels[i*9+j].getVisibleRect());
+			}
+			return solveSudoku(i, j+1, labels, slowSolve);
+		}
+
+		// Brute force values from 1 to 9
+		for (int value=1; value<=9; value++) {
+			if (this.checkIfFree(i, j, value, true)) {
+				if (labels != null && slowSolve) {
+					changeGUIField(labels[i * 9 + j], value, slowSolve);
+				}
+				this.solvedSudoku[i][j].setDigit(value);
+				solveSudoku(i, j+1, labels, slowSolve);
+				
+				if (!this.checkSudokuCorrectness()) {
+					this.solvedSudoku[i][j].setDigit(0); // Reset if no digit fits
+				}
+			}
+		}
+
+		return false; // 
+	}
+	
+	/*
+	// If it has more than one solution it wont solve 
+		protected boolean createSudoku(int i, int j) {
+			// Recursion anchors
+			// Keep i and j in line
+			if (this.isFull()) {
+				return true;
+			}
+
+			// Brute force values from 1 to 9
+			for (int value=1; value<=9; value++) {
+				if (this.checkIfFree(i, j, value, true)) {
+					this.createSudoku[i][j].setDigit(value);
+					int randomIndex, rowIndex, columnIndex;
+					do {
+						randomIndex = (int) (Math.random() * 81);
+						rowIndex = randomIndex / 9;
+						columnIndex = randomIndex % 9;
+					} while (this.createSudoku[rowIndex][columnIndex].getDigit() != 0);
+					
+					createSudoku(rowIndex, columnIndex);
+					
+					if (this.countSolutions(0,0,0,1) != 1) {
+						this.solvedSudoku[i][j].setDigit(0); // Reset if no digit fits
+					}
+				}
+			}
+
+			return false; // 
+		}
+		
+		*/ //Doesn't work yet
+		
+		private boolean isFull() {
+			for (oneField[] i : this.createSudoku) {
+				for (oneField j : i) {
+					if (j.getDigit() == 0) {
+						return false;
+					}
+				}
+			}
+			return true;
+		}
+	
+	
+	protected int countSolutions(int i, int j, int countSolutions, int maxCount) {
 		// Recursion anchors
 		// Keep i and j in line
 		if (j == 9) {
@@ -88,45 +172,21 @@ public class Sudoku {
 		}
 		// Skip preset fields
 		if (this.solvedSudoku[i][j].isGiven()) {
-			if (slowSolve) {
-				labels[i*9+j].setBorder(BorderFactory.createLineBorder(Color.RED, 2));
-				labels[i*9+j].paintImmediately(labels[i*9+j].getVisibleRect());
-			}
-			return solveSudoku(i, j+1, countSolutions, labels, slowSolve);
+			return countSolutions(i, j+1, countSolutions, maxCount);
 		}
 
 		// Brute force values from 1 to 9
-		for (int value=1; value<=9 /*&& countSolutions<1*/; value++) {
+		for (int value=1; value<=9  && countSolutions<maxCount; value++) {
 			if (this.checkIfFree(i, j, value, true)) {
-				if (labels != null) {
-					changeGUIField(labels[i * 9 + j], value, slowSolve);
-				}
 				this.solvedSudoku[i][j].setDigit(value);
-				countSolutions = solveSudoku(i, j+1, countSolutions, labels, slowSolve);
-				
-				if (!this.checkSudokuCorrectness()) {
-					this.solvedSudoku[i][j].setDigit(0); // Reset if no digit fits
-				}
+				countSolutions = countSolutions(i, j+1, countSolutions, maxCount);
 			}
 		}
-		return countSolutions; // 
+		
+		this.solvedSudoku[i][j].setDigit(0);  // Reset if not digit fits
+		return countSolutions; 
 	}
 	
-	private void changeGUIField(JFormattedTextField textField, int value, boolean slowSolve) {
-		int ms = 8;
-		textField.setText("" + value);
-		if (slowSolve) {
-			textField.setBorder(BorderFactory.createLineBorder(Color.GREEN, 5));
-			textField.paintImmediately(textField.getVisibleRect());
-			try {
-			      Thread.sleep(ms);
-			    } catch (InterruptedException e) {
-			      e.printStackTrace();
-			    }
-			textField.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-			textField.paintImmediately(textField.getVisibleRect());
-		}
-	}
 	
 	// Check whether number is present in row / column / box 
 		private boolean checkIfFree(int rowIndex, int columnIndex, int number, boolean check) {
@@ -273,6 +333,23 @@ public class Sudoku {
 			for (int j=0; j<this.SIZE; j++) {
 				this.solvedSudoku[i][j].setDigit(this.sudoku[i][j].getDigit());
 			}
+		}
+	}
+	
+	private void changeGUIField(JFormattedTextField textField, int value, boolean slowSolve) {
+		int ms = 5;
+		textField.setText("" + value);
+		textField.paintImmediately(textField.getVisibleRect());
+		if (slowSolve) {
+			textField.setBorder(BorderFactory.createLineBorder(Color.GREEN, 5));
+			textField.paintImmediately(textField.getVisibleRect());
+			try {
+			      Thread.sleep(ms);
+			    } catch (InterruptedException e) {
+			      e.printStackTrace();
+			    }
+			textField.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+			textField.paintImmediately(textField.getVisibleRect());
 		}
 	}
 	
